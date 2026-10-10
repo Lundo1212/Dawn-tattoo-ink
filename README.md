@@ -19,7 +19,27 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Email configuration for automatic sending
 
+This app is already wired to send customer emails with Nodemailer. To enable it:
+
+1. In your Gmail account, create an App Password.
+2. Put the real Gmail address and app password in the environment variables in `.env.local` or in Vercel's project settings.
+3. Set `APP_URL` to your production domain, e.g. `https://dawn-tattoo-ink.vercel.app`.
+4. Use the same Gmail account in `SMTP_USER` and `EMAIL_FROM` unless you have a verified custom domain.
+
+Example:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-gmail-address@gmail.com
+SMTP_PASS=your-16-character-app-password
+EMAIL_FROM="Dawn Tattoo Ink <your-gmail-address@gmail.com>"
+APP_URL=https://dawn-tattoo-ink.vercel.app
+```
+
+Add the same values in your Vercel project under Settings → Environment Variables so the live site can send booking reminders, payment confirmations, and admin replies automatically.
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

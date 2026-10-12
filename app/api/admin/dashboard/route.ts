@@ -26,6 +26,13 @@ export async function GET(request: Request) {
   }
 
   if (!supabase) {
+    console.error("Admin dashboard Supabase client is unavailable", {
+      urlConfigured: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL),
+      serverKeyConfigured: Boolean(
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY,
+      ),
+      publishableKeyConfigured: Boolean(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+    });
     return NextResponse.json({
       bookings: [],
       questions: readLocalVisitorQuestions(),

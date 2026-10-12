@@ -10,6 +10,8 @@ const services = [
   { name: "Custom Ink", price: 1500 },
 ] as const;
 
+type Service = { name: string; price: number };
+
 type PayPalWindow = Window & {
   paypal?: {
     Buttons: (options: Record<string, unknown>) => {
@@ -21,12 +23,16 @@ type PayPalWindow = Window & {
 function BookingForm() {
   const searchParams = useSearchParams();
   const requestedService = searchParams.get("service") ?? "";
+  const requestedPrice = Number(searchParams.get("price"));
+  const hasRequestedPrice =
+    searchParams.has("price") && Number.isFinite(requestedPrice) && requestedPrice >= 0;
 
   const [service, setService] = useState(
-    services.some((item) => item.name === requestedService)
+    requestedService
       ? requestedService
       : services[0].name,
   );
+  const [galleryServices, setGalleryServices] = useState<Service[]>([]);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -41,8 +47,49 @@ function BookingForm() {
   const [step, setStep] = useState<"booking" | "payment" | "paid">("booking");
   const [ticketNumber, setTicketNumber] = useState("");
 
+  const availableServices = new Map<string, Service>(
+    services.map((item) => [item.name, item]),
+  );
+  if (requestedService && hasRequestedPrice) {
+    availableServices.set(requestedService, {
+      name: requestedService,
+      price: requestedPrice,
+    });
+  }
+  galleryServices.forEach((item) => availableServices.set(item.name, item));
+  const serviceOptions = [...availableServices.values()];
   const selectedService =
-    services.find((item) => item.name === service) ?? services[0];
+    serviceOptions.find((item) => item.name === service) ?? serviceOptions[0];
+
+  useEffect(() => {
+    async function loadGalleryServices() {
+      try {
+        const response = await fetch("/api/media");
+        if (!response.ok) {
+          throw new Error("Unable to load the tattoo catalogue.");
+        }
+
+        const result = await response.json();
+        if (!Array.isArray(result.items)) return;
+
+        setGalleryServices(
+          result.items.flatMap((item: { name?: unknown; price?: unknown }) => {
+            const price = Number(item.price);
+            return typeof item.name === "string" &&
+              item.name.trim() &&
+              Number.isFinite(price) &&
+              price >= 0
+              ? [{ name: item.name, price }]
+              : [];
+          }),
+        );
+      } catch (error) {
+        console.error("Unable to load tattoo options:", error);
+      }
+    }
+
+    void loadGalleryServices();
+  }, []);
 
   const deposit = selectedService.price * 0.3;
   const balance = selectedService.price - deposit;
@@ -422,7 +469,7 @@ function BookingForm() {
                 onChange={(event) => setService(event.target.value)}
                 className="w-full rounded-lg border border-white/10 bg-[#0b0b0b] p-3 text-white outline-none focus:border-amber-400"
               >
-                {services.map((item) => (
+                {serviceOptions.map((item) => (
                   <option key={item.name} value={item.name}>
                     {item.name} — ${item.price}
                   </option>

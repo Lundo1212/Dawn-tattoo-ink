@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendBookingReminderEmail } from "../../../lib/email";
+import { getGalleryItems } from "../../../lib/gallery";
 import { supabase } from "../../../lib/supabase";
 
 const services = {
@@ -93,7 +94,8 @@ export async function POST(request: Request) {
       email.length > 254 ||
       !phone ||
       phone.length > 40 ||
-      !(service in services) ||
+      !service ||
+      service.length > 120 ||
       !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
       !["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"].includes(time) ||
       !["card", "paypal"].includes(payment) ||
@@ -120,7 +122,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const servicePrice = services[service as keyof typeof services];
+    const galleryService = (await getGalleryItems()).find(
+      (item) => item.name === service,
+    );
+    const legacyServicePrice = Object.entries(services).find(
+      ([name]) => name === service,
+    )?.[1];
+    const servicePrice = galleryService?.price ?? legacyServicePrice ?? NaN;
+
+    if (!Number.isFinite(servicePrice) || servicePrice < 0) {
+      return NextResponse.json(
+        { error: "Please choose a tattoo from the available options." },
+        { status: 400 },
+      );
+    }
+
     const depositAmount = Math.round(servicePrice * 30) / 100;
     const balanceAmount = servicePrice - depositAmount;
     const generatedTicketNumber = `DTI-${Date.now().toString().slice(-8)}`;

@@ -383,7 +383,7 @@ export default function Home() {
                   </div>
 
                   <a
-                    href={`/book?service=${encodeURIComponent(tattoo.name)}`}
+                    href={`/book?service=${encodeURIComponent(tattoo.name)}&price=${encodeURIComponent(String(Number(tattoo.price || 0)))}`}
                     className="mt-5 block rounded-full border border-[#c9a46a]/60 py-3 text-center text-sm font-bold transition hover:bg-[#c9a46a] hover:text-black"
                   >
                     Book This Tattoo ↗

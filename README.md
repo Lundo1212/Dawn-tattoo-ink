@@ -43,9 +43,9 @@ Add the same values in your Vercel project under Settings → Environment Variab
 
 ## Gallery uploads on Vercel
 
-Gallery images and videos are uploaded directly to Supabase Storage, and their public URLs are saved in the `gallery_items` table. Configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and the server-side `SUPABASE_SERVICE_ROLE_KEY` in Vercel. The admin upload API creates or configures a public `gallery-media` bucket on first use; set `SUPABASE_STORAGE_BUCKET` only if you want a different bucket name. The server-side service role key is required for bucket setup and database writes; never expose it as a `NEXT_PUBLIC_` variable.
+Gallery images and videos are uploaded directly to Supabase Storage, and their public URLs are saved in the `gallery_items` table. Apply the migration in `supabase/migrations/` with the Supabase CLI or run it in the Supabase SQL Editor. Configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and the server-side `SUPABASE_SERVICE_ROLE_KEY` in Vercel. The admin upload API creates or configures a public `gallery-media` bucket on first use; set `SUPABASE_STORAGE_BUCKET` only if you want a different bucket name. The server-side service role key is required for bucket setup and database writes; never expose it as a `NEXT_PUBLIC_` variable.
 
-The `gallery_items` table must exist in Supabase. Existing gallery entries stored only in the repository's local JSON file cannot be edited or deleted on Vercel; add them again through the admin dashboard so they are saved in the database.
+Existing gallery entries stored only in the repository's local JSON file cannot be edited or deleted on Vercel; add them again through the admin dashboard so they are saved in the database.
 
 ## Learn More
 

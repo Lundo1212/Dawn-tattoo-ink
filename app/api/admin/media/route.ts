@@ -34,12 +34,22 @@ function saveLocalGalleryItems(items: GalleryItem[]) {
 }
 
 const DEFAULT_ADMIN_SECRET = "dawn-admin-2026";
+const READ_ONLY_STORAGE_ERROR =
+  "Gallery changes need persistent storage in production. Configure the Supabase gallery_items table and use hosted media URLs instead of uploading files.";
 
 function isAuthorized(request: Request) {
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
   const expectedToken = process.env.ADMIN_ACCESS_KEY || DEFAULT_ADMIN_SECRET;
   return Boolean(token && token === expectedToken);
+}
+
+function isServerlessDeployment() {
+  return process.env.VERCEL === "1";
+}
+
+function isUploadedFile(value: FormDataEntryValue | null): value is File {
+  return Boolean(value && typeof value !== "string");
 }
 
 function removeUploadedFile(url: string | null | undefined) {
@@ -125,6 +135,14 @@ export async function POST(request: Request) {
 
   try {
     const formData = await request.formData();
+    if (isServerlessDeployment() && isUploadedFile(formData.get("file"))) {
+      return NextResponse.json({ error: READ_ONLY_STORAGE_ERROR }, { status: 503 });
+    }
+
+    if (isServerlessDeployment() && !supabase) {
+      return NextResponse.json({ error: READ_ONLY_STORAGE_ERROR }, { status: 503 });
+    }
+
     const { fields } = await readMediaFields(formData);
     if (supabase) {
       const { data, error } = await supabase
@@ -134,7 +152,13 @@ export async function POST(request: Request) {
         .single();
 
       if (data) return NextResponse.json({ ok: true, item: { ...data, source: "database" } });
-      if (error) console.error("Gallery insert failed, using local fallback:", error);
+      if (error) console.error("Gallery insert failed:", error);
+      if (isServerlessDeployment()) {
+        return NextResponse.json(
+          { error: "Unable to save this gallery item to the database. Check the Supabase gallery_items table and try again." },
+          { status: 500 },
+        );
+      }
     }
 
     const itemRecord: GalleryItem = {
@@ -168,6 +192,12 @@ export async function PATCH(request: Request) {
     if (!id) return NextResponse.json({ error: "Media item ID is required." }, { status: 400 });
     if (source !== "local" && source !== "database") {
       return NextResponse.json({ error: "Invalid media storage source." }, { status: 400 });
+    }
+    if (isServerlessDeployment() && source === "local") {
+      return NextResponse.json({ error: READ_ONLY_STORAGE_ERROR }, { status: 503 });
+    }
+    if (isServerlessDeployment() && isUploadedFile(formData.get("file"))) {
+      return NextResponse.json({ error: READ_ONLY_STORAGE_ERROR }, { status: 503 });
     }
 
     let previous: GalleryItem | undefined;
@@ -242,6 +272,9 @@ export async function DELETE(request: Request) {
     const id = String(rawId ?? "");
     const source = String(rawSource ?? "local");
     if (!id) return NextResponse.json({ error: "Media item ID is required." }, { status: 400 });
+    if (isServerlessDeployment() && source === "local") {
+      return NextResponse.json({ error: READ_ONLY_STORAGE_ERROR }, { status: 503 });
+    }
 
     if (source === "database") {
       if (!supabase) return NextResponse.json({ error: "Database storage is unavailable." }, { status: 503 });

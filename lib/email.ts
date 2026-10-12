@@ -12,7 +12,8 @@ type BookingEmailData = {
 };
 
 const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
-const getAppUrl = () => (process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+const getAppUrl = () =>
+  (process.env.APP_URL || "https://dawn-tattoo-ink.vercel.app").replace(/\/+$/, "");
 
 const escapeHtml = (value: string) =>
   value

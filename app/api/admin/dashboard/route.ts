@@ -70,7 +70,8 @@ export async function GET(request: Request) {
 
   const warnings = [
     bookingError && "Bookings could not be loaded from the database.",
-    questionError && "Some visitor questions could not be loaded from the database.",
+    questionError &&
+      `Visitor questions could not be loaded: ${questionError.message}`,
     mediaError && "Some gallery items could not be loaded from the database.",
   ].filter((warning): warning is string => Boolean(warning));
 

@@ -30,7 +30,9 @@ export async function GET(request: Request) {
       bookings: [],
       questions: readLocalVisitorQuestions(),
       media: readLocalGalleryItems(),
-      warning: "Supabase is not configured yet. Add your database credentials to enable booking data sync.",
+      warnings: [
+        "Supabase is not configured. Booking data cannot sync until database credentials are added.",
+      ],
     });
   }
 
@@ -64,6 +66,12 @@ export async function GET(request: Request) {
     console.error("Admin media fetch failed:", mediaError);
   }
 
+  const warnings = [
+    bookingError && "Bookings could not be loaded from the database.",
+    questionError && "Some visitor questions could not be loaded from the database.",
+    mediaError && "Some gallery items could not be loaded from the database.",
+  ].filter((warning): warning is string => Boolean(warning));
+
   const databaseMedia = (media ?? []).map((item) => ({ ...item, source: "database" }));
   const databaseQuestions = (questions ?? []).map((item) => ({ ...item, source: "database" }));
   const databaseMediaUrls = new Set(
@@ -77,5 +85,6 @@ export async function GET(request: Request) {
     bookings: bookings ?? [],
     questions: [...databaseQuestions, ...readLocalVisitorQuestions()],
     media: [...databaseMedia, ...localMedia],
+    warnings,
   });
 }

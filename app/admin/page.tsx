@@ -59,6 +59,7 @@ export default function AdminDashboardPage() {
   const [mediaItems, setMediaItems] = useState<GalleryItemRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dashboardWarnings, setDashboardWarnings] = useState<string[]>([]);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [mediaForm, setMediaForm] = useState({
     title: "",
@@ -99,6 +100,7 @@ export default function AdminDashboardPage() {
     async function loadDashboard() {
       try {
         const response = await fetch("/api/admin/dashboard", {
+          cache: "no-store",
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -113,8 +115,10 @@ export default function AdminDashboardPage() {
         setBookings(result.bookings ?? []);
         setQuestions(result.questions ?? []);
         setMediaItems(result.media ?? []);
+        setDashboardWarnings(result.warnings ?? []);
 
         const socialResponse = await fetch("/api/admin/social-links", {
+          cache: "no-store",
           headers: { Authorization: `Bearer ${token}` },
         });
         const socialResult = await socialResponse.json();
@@ -408,6 +412,18 @@ export default function AdminDashboardPage() {
         {error && (
           <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
             {error}
+          </div>
+        )}
+
+        {dashboardWarnings.length > 0 && (
+          <div
+            role="status"
+            className="mb-6 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100"
+          >
+            <p className="font-semibold">Dashboard data may be incomplete.</p>
+            <ul className="mt-2 list-inside list-disc space-y-1">
+              {dashboardWarnings.map((warning) => <li key={warning}>{warning}</li>)}
+            </ul>
           </div>
         )}
 

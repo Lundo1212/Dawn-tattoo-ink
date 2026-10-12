@@ -5,10 +5,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 const services = [
-  { name: "Fine Line Floral", price: 150 },
-  { name: "Blackwork Art", price: 250 },
-  { name: "Custom Ink", price: 350 },
-  { name: "Traditional Tattoo", price: 200 },
+  { name: "Fine Line Floral", price: 1500 },
+  { name: "Blackwork Art", price: 800 },
+  { name: "Custom Ink", price: 1500 },
 ] as const;
 
 type PayPalWindow = Window & {

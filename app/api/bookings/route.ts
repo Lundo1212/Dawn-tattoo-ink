@@ -3,10 +3,9 @@ import { sendBookingReminderEmail } from "../../../lib/email";
 import { supabase } from "../../../lib/supabase";
 
 const services = {
-  "Fine Line Floral": 150,
-  "Blackwork Art": 250,
-  "Custom Ink": 350,
-  "Traditional Tattoo": 200,
+  "Fine Line Floral": 1500,
+  "Blackwork Art": 800,
+  "Custom Ink": 1500,
 } as const;
 
 export async function GET(request: Request) {

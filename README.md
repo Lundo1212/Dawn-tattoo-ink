@@ -41,6 +41,8 @@ APP_URL=https://dawn-tattoo-ink.vercel.app
 
 Add the same values in your Vercel project under Settings → Environment Variables so the live site can send booking reminders, payment confirmations, and admin replies automatically.
 
+Booking emails link to the ticket tracker at `/track`, where customers can enter a ticket number to check appointment and deposit status or pay an outstanding deposit.
+
 ## Gallery uploads on Vercel
 
 Gallery images and videos are uploaded directly to Supabase Storage, and their public URLs are saved in the `gallery_items` table. The migrations in `supabase/migrations/` create the `bookings`, `visitor_questions`, and `gallery_items` tables and the public `gallery-media` bucket. Apply every migration in timestamp order with the Supabase CLI, or run each migration in that order in the Supabase SQL Editor. Configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and the server-side `SUPABASE_SERVICE_ROLE_KEY` in Vercel. The admin upload API also creates or configures the bucket on first use; set `SUPABASE_STORAGE_BUCKET` only if you want a different bucket name. The server-side key is required for bucket setup and database writes; never expose it as a `NEXT_PUBLIC_` variable.

@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 const services = [
@@ -109,8 +110,6 @@ function BookingForm() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ticketNumber,
-            amount: deposit.toFixed(2),
-            currency: "USD",
           }),
         });
 
@@ -378,12 +377,18 @@ function BookingForm() {
   return (
     <main className="min-h-screen bg-[#0b0b0b] px-3 py-8 text-white sm:px-6 sm:py-12">
       <div className="mx-auto max-w-3xl">
-        <a
+        <Link
           href="/"
           className="text-sm text-amber-400 transition hover:text-amber-300"
         >
           ← Back to home
-        </a>
+        </Link>
+        <Link
+          href="/track"
+          className="ml-5 text-sm text-amber-400 transition hover:text-amber-300"
+        >
+          Track an existing booking
+        </Link>
 
         <header className="mt-6 text-center sm:mt-8">
           <p className="text-xs uppercase tracking-[0.28em] text-amber-400 sm:text-sm">

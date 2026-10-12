@@ -1,13 +1,60 @@
 import { NextResponse } from "next/server";
+import { supabase } from "../../../../lib/supabase";
 
 export async function POST(request: Request) {
   try {
-    const { ticketNumber, amount, currency = "USD" } = await request.json();
+    const body = await request.json();
+    const ticketNumber =
+      typeof body.ticketNumber === "string" ? body.ticketNumber.trim() : "";
 
-    if (!ticketNumber || typeof amount !== "string" || Number(amount) <= 0) {
+    if (!ticketNumber || ticketNumber.length > 64) {
       return NextResponse.json(
-        { error: "Missing or invalid PayPal order details." },
+        { error: "Enter a valid ticket number." },
         { status: 400 },
+      );
+    }
+
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Booking payment service is not configured." },
+        { status: 503 },
+      );
+    }
+
+    const { data: booking, error: bookingError } = await supabase
+      .from("bookings")
+      .select("ticket_number, deposit_amount, payment_status")
+      .eq("ticket_number", ticketNumber)
+      .maybeSingle();
+
+    if (bookingError) {
+      console.error("PayPal booking lookup failed:", bookingError.message);
+      return NextResponse.json(
+        { error: "We could not verify this booking for payment." },
+        { status: 500 },
+      );
+    }
+
+    if (!booking) {
+      return NextResponse.json(
+        { error: "Ticket not found. Please check the number and try again." },
+        { status: 404 },
+      );
+    }
+
+    if (booking.payment_status === "paid") {
+      return NextResponse.json(
+        { error: "This booking has already been paid." },
+        { status: 409 },
+      );
+    }
+
+    const amount = Number(booking.deposit_amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      console.error("Invalid booking deposit amount:", booking.ticket_number);
+      return NextResponse.json(
+        { error: "This booking does not have a valid deposit amount." },
+        { status: 500 },
       );
     }
 
@@ -37,11 +84,11 @@ export async function POST(request: Request) {
         intent: "CAPTURE",
         purchase_units: [
           {
-            reference_id: ticketNumber,
-            description: `Dawn Tattoo Ink booking deposit for ${ticketNumber}`,
+            reference_id: booking.ticket_number,
+            description: `Dawn Tattoo Ink booking deposit for ${booking.ticket_number}`,
             amount: {
-              currency_code: currency,
-              value: Number(amount).toFixed(2),
+              currency_code: "USD",
+              value: amount.toFixed(2),
             },
           },
         ],

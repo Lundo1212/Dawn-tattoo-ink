@@ -117,12 +117,12 @@ export async function sendBookingReminderEmail({
   paymentMethod,
 }: BookingEmailData) {
   const appUrl = getAppUrl();
-  const buttonUrl = `${appUrl}/book?service=${encodeURIComponent(service)}`;
+  const buttonUrl = `${appUrl}/track?ticketNumber=${encodeURIComponent(ticketNumber)}`;
   const subject = `Payment required: ${ticketNumber}`;
   const html = createEmailLayout({
     title: "Payment Required",
     intro: `Dear ${name}, thank you for choosing Dawn Tattoo Ink. We have received your appointment request for ${service}. To confirm your booking and have your ticket issued, please pay the ${paymentMethod} deposit of ${formatCurrency(depositAmount)}.`,
-    buttonText: "Return to the Booking Page",
+    buttonText: "Track Booking or Pay Deposit",
     buttonUrl,
     cta: `Ticket: ${ticketNumber} • ${date} at ${time}`,
   });
@@ -131,7 +131,7 @@ export async function sendBookingReminderEmail({
     to: email,
     subject,
     html,
-    text: `Dear ${name},\n\nThank you for choosing Dawn Tattoo Ink. We have received your appointment request for ${service} on ${date} at ${time}. Please pay the ${formatCurrency(depositAmount)} ${paymentMethod} deposit so we can confirm your booking and issue your ticket.\n\nTicket number: ${ticketNumber}\nVisit the booking page: ${buttonUrl}\n\nWarm regards,\nThe Dawn Tattoo Ink team`,
+    text: `Dear ${name},\n\nThank you for choosing Dawn Tattoo Ink. We have received your appointment request for ${service} on ${date} at ${time}. Please pay the ${formatCurrency(depositAmount)} ${paymentMethod} deposit so we can confirm your booking and issue your ticket.\n\nTicket number: ${ticketNumber}\nTrack your booking or pay your deposit: ${buttonUrl}\n\nWarm regards,\nThe Dawn Tattoo Ink team`,
   });
 }
 
@@ -145,12 +145,12 @@ export async function sendPaymentConfirmationEmail({
   paymentMethod,
 }: BookingEmailData) {
   const appUrl = getAppUrl();
-  const buttonUrl = `${appUrl}/`;
+  const buttonUrl = `${appUrl}/track?ticketNumber=${encodeURIComponent(ticketNumber)}`;
   const subject = `Welcome to Dawn Tattoo Ink — payment confirmed for ${ticketNumber}`;
   const html = createEmailLayout({
     title: "Welcome to Dawn Tattoo Ink",
     intro: `Dear ${name}, thank you for choosing Dawn Tattoo Ink. Your deposit payment for ${service} has been received and your appointment on ${date} at ${time} is confirmed. We warmly welcome you to our studio and look forward to helping bring your vision to life.`,
-    buttonText: "Visit Dawn Tattoo Ink",
+    buttonText: "Track Your Booking",
     buttonUrl,
     cta: `Ticket: ${ticketNumber} • ${date} at ${time} • Payment: ${paymentMethod}`,
   });
@@ -159,7 +159,7 @@ export async function sendPaymentConfirmationEmail({
     to: email,
     subject,
     html,
-    text: `Dear ${name},\n\nWelcome to Dawn Tattoo Ink, and thank you for choosing our studio. Your deposit payment for ${service} on ${date} at ${time} has been confirmed. We look forward to welcoming you and helping bring your vision to life.\n\nTicket number: ${ticketNumber}\nVisit our website: ${buttonUrl}\n\nWarm regards,\nThe Dawn Tattoo Ink team`,
+    text: `Dear ${name},\n\nWelcome to Dawn Tattoo Ink, and thank you for choosing our studio. Your deposit payment for ${service} on ${date} at ${time} has been confirmed. We look forward to welcoming you and helping bring your vision to life.\n\nTicket number: ${ticketNumber}\nTrack your booking: ${buttonUrl}\n\nWarm regards,\nThe Dawn Tattoo Ink team`,
   });
 }
 

@@ -9,6 +9,64 @@ const services = {
   "Traditional Tattoo": 200,
 } as const;
 
+export async function GET(request: Request) {
+  const ticketNumber = new URL(request.url).searchParams.get("ticketNumber")?.trim();
+
+  if (!ticketNumber || ticketNumber.length > 64) {
+    return NextResponse.json({ error: "Enter a valid ticket number." }, { status: 400 });
+  }
+
+  if (!supabase) {
+    return NextResponse.json(
+      { error: "Booking service is not configured." },
+      { status: 503 },
+    );
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("ticket_number, service_name, service_price, deposit_amount, balance_amount, appointment_date, appointment_time, booking_status, payment_status")
+      .eq("ticket_number", ticketNumber)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Booking lookup failed:", error.message);
+      return NextResponse.json(
+        { error: "We could not look up this ticket. Please try again." },
+        { status: 500 },
+      );
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        { error: "Ticket not found. Check the number and try again." },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({
+      booking: {
+        ticketNumber: data.ticket_number,
+        serviceName: data.service_name,
+        servicePrice: Number(data.service_price),
+        depositAmount: Number(data.deposit_amount),
+        balanceAmount: Number(data.balance_amount),
+        appointmentDate: data.appointment_date,
+        appointmentTime: data.appointment_time,
+        bookingStatus: data.booking_status,
+        paymentStatus: data.payment_status,
+      },
+    });
+  } catch (error) {
+    console.error("Booking lookup exception:", error);
+    return NextResponse.json(
+      { error: "We could not look up this ticket. Please try again." },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
     if (!supabase) {

@@ -24,6 +24,8 @@ type QuestionRecord = {
   customer_email: string;
   question_text: string;
   created_at?: string;
+  response?: string | null;
+  answered_at?: string | null;
   source?: "local" | "database";
 };
 
@@ -80,6 +82,7 @@ export default function AdminDashboardPage() {
   const [replyingQuestionId, setReplyingQuestionId] = useState<number | string | null>(null);
   const [questionReply, setQuestionReply] = useState("");
   const [questionReplySending, setQuestionReplySending] = useState(false);
+  const [deletingQuestionId, setDeletingQuestionId] = useState<number | string | null>(null);
   const [questionReplyStatus, setQuestionReplyStatus] = useState<{
     id: number | string;
     message: string;
@@ -395,6 +398,8 @@ export default function AdminDashboardPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          id: question.id,
+          source: question.source ?? "local",
           name: question.customer_name ?? "",
           email: question.customer_email,
           question: question.question_text,
@@ -404,6 +409,13 @@ export default function AdminDashboardPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Unable to email your reply.");
 
+      setQuestions((current) =>
+        current.map((item) =>
+          item.id === question.id
+            ? { ...item, response: questionReply.trim(), answered_at: new Date().toISOString() }
+            : item,
+        ),
+      );
       setQuestionReplyStatus({ id: question.id, message: result.message, isError: false });
       setQuestionReply("");
       setReplyingQuestionId(null);
@@ -415,6 +427,41 @@ export default function AdminDashboardPage() {
       });
     } finally {
       setQuestionReplySending(false);
+    }
+  }
+
+  async function deleteAnsweredQuestion(question: QuestionRecord) {
+    if (!question.answered_at) return;
+    if (!window.confirm("Delete this answered question? This cannot be undone.")) return;
+
+    const token = sessionStorage.getItem("dawn-admin-token");
+    if (!token) {
+      router.push("/admin/login");
+      return;
+    }
+
+    setDeletingQuestionId(question.id);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/questions", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: question.id,
+          source: question.source ?? "local",
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to delete the answered question.");
+
+      setQuestions((current) => current.filter((item) => item.id !== question.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to delete the answered question.");
+    } finally {
+      setDeletingQuestionId(null);
     }
   }
 
@@ -500,7 +547,7 @@ export default function AdminDashboardPage() {
               <section className="rounded-3xl border border-white/10 bg-[#151515] p-5 sm:p-6">
                 <div className="mb-5">
                   <h2 className="text-xl font-bold text-[#c9a46a]">Social media links</h2>
-                  <p className="mt-2 text-sm text-gray-400">Saved links appear as clickable icons in the public footer.</p>
+                  <p className="mt-2 text-sm text-gray-400">Save links to show them in the public footer. Clear a field and save to remove its link.</p>
                 </div>
                 <form onSubmit={(event) => void saveDashboardSocialLinks(event)} className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -808,7 +855,22 @@ export default function AdminDashboardPage() {
                       </p>
                       <p className="mt-1 text-xs text-gray-400">{question.customer_email}</p>
                       <p className="mt-3 text-sm leading-6 text-gray-300">{question.question_text}</p>
-                      {replyingQuestionId === question.id ? (
+                      {question.answered_at ? (
+                        <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+                            Answered
+                            {question.answered_at
+                              ? ` · ${new Date(question.answered_at).toLocaleDateString()}`
+                              : ""}
+                          </p>
+                          {question.response && (
+                            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-300">
+                              {question.response}
+                            </p>
+                          )}
+                        </div>
+                      ) : null}
+                      {!question.answered_at && replyingQuestionId === question.id ? (
                         <form onSubmit={(event) => void sendQuestionReply(event, question)} className="mt-4 space-y-3">
                           <label className="block text-sm text-gray-300">
                             Email reply to {question.customer_email}
@@ -842,7 +904,7 @@ export default function AdminDashboardPage() {
                             </button>
                           </div>
                         </form>
-                      ) : (
+                      ) : !question.answered_at ? (
                         <button
                           type="button"
                           onClick={() => {
@@ -853,6 +915,16 @@ export default function AdminDashboardPage() {
                           className="mt-4 rounded-full border border-[#c9a46a]/40 px-4 py-2 text-xs font-semibold text-[#e2c18d] transition hover:bg-[#c9a46a]/10"
                         >
                           Reply by email
+                        </button>
+                      ) : null}
+                      {question.answered_at && (
+                        <button
+                          type="button"
+                          onClick={() => void deleteAnsweredQuestion(question)}
+                          disabled={deletingQuestionId === question.id}
+                          className="mt-4 rounded-full border border-red-400/30 px-4 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {deletingQuestionId === question.id ? "Deleting..." : "Delete answered question"}
                         </button>
                       )}
                       {questionReplyStatus?.id === question.id && (

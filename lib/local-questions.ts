@@ -8,6 +8,8 @@ export type VisitorQuestionRecord = {
   customer_email: string;
   question_text: string;
   created_at: string;
+  response?: string | null;
+  answered_at?: string | null;
   source?: "local" | "database";
 };
 
@@ -36,4 +38,31 @@ export function saveLocalVisitorQuestion(
   mkdirSync(dataDirectory, { recursive: true });
   writeFileSync(questionsPath(), JSON.stringify([record, ...readLocalVisitorQuestions()], null, 2));
   return { ...record, source: "local" as const };
+}
+
+export function answerLocalVisitorQuestion(id: string, response: string) {
+  const questions = readLocalVisitorQuestions();
+  const index = questions.findIndex(
+    (question) => String(question.id) === id && !question.answered_at,
+  );
+  if (index === -1) return false;
+
+  questions[index] = {
+    ...questions[index],
+    response,
+    answered_at: new Date().toISOString(),
+  };
+  writeFileSync(questionsPath(), JSON.stringify(questions, null, 2));
+  return true;
+}
+
+export function deleteLocalAnsweredQuestion(id: string) {
+  const questions = readLocalVisitorQuestions();
+  const remaining = questions.filter(
+    (question) => String(question.id) !== id || !question.answered_at,
+  );
+  if (remaining.length === questions.length) return false;
+
+  writeFileSync(questionsPath(), JSON.stringify(remaining, null, 2));
+  return true;
 }

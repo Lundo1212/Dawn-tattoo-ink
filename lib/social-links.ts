@@ -43,7 +43,7 @@ export function saveSocialLinks(links: SocialLinks) {
   writeFileSync(socialLinksPath(), JSON.stringify(links, null, 2));
 }
 
-export function validateSocialLinks(value: unknown): SocialLinks | null {
+export function parseSocialLinks(value: unknown): SocialLinks | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const input = value as Record<string, unknown>;
   if (Object.keys(input).some((key) => !socialPlatforms.includes(key as SocialPlatform))) return null;
@@ -64,4 +64,8 @@ export function validateSocialLinks(value: unknown): SocialLinks | null {
   }
 
   return links;
+}
+
+export function validateSocialLinks(value: unknown): SocialLinks | null {
+  return parseSocialLinks(value);
 }

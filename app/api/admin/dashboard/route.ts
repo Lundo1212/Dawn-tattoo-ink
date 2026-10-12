@@ -53,7 +53,7 @@ export async function GET(request: Request) {
         .order("created_at", { ascending: false }),
       supabase
         .from("visitor_questions")
-        .select("id, customer_name, customer_email, question_text, created_at")
+        .select("id, customer_name, customer_email, question_text, response, answered_at, created_at")
         .order("created_at", { ascending: false }),
       supabase
         .from("gallery_items")

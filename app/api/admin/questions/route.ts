@@ -38,6 +38,13 @@ export async function DELETE(request: Request) {
   }
 
   if (source === "local") {
+    if (process.env.VERCEL === "1") {
+      return NextResponse.json(
+        { error: "Local questions cannot be deleted on the live site." },
+        { status: 503 },
+      );
+    }
+
     if (!deleteLocalAnsweredQuestion(String(id))) {
       return NextResponse.json(
         { error: "Only answered questions can be deleted." },

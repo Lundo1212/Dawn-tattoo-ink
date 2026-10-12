@@ -40,6 +40,13 @@ export async function POST(request: Request) {
 
     let questionId: number | null = null;
     if (source === "local") {
+      if (process.env.VERCEL === "1") {
+        return NextResponse.json(
+          { error: "Local questions cannot be updated on the live site. Use a question saved in Supabase." },
+          { status: 503 },
+        );
+      }
+
       const record = readLocalVisitorQuestions().find(
         (item) => String(item.id) === id,
       );

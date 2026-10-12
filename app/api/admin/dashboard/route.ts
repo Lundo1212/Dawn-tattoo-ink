@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     });
     return NextResponse.json({
       bookings: [],
-      questions: readLocalVisitorQuestions(),
+      questions: process.env.VERCEL === "1" ? [] : readLocalVisitorQuestions(),
       media: readLocalGalleryItems(),
       warnings: [
         "Supabase is not configured. Booking data cannot sync until database credentials are added.",
@@ -90,7 +90,10 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     bookings: bookings ?? [],
-    questions: [...databaseQuestions, ...readLocalVisitorQuestions()],
+    questions: [
+      ...databaseQuestions,
+      ...(process.env.VERCEL === "1" ? [] : readLocalVisitorQuestions()),
+    ],
     media: [...databaseMedia, ...localMedia],
     warnings,
   });

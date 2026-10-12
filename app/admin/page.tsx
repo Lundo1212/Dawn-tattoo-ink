@@ -55,6 +55,18 @@ const emptySocialLinks: SocialLinks = {
   WhatsApp: "",
 };
 
+const galleryCategories = [
+  "Fine Line",
+  "Blackwork",
+  "Custom",
+  "Traditional",
+  "Realism",
+  "Lettering",
+  "Geometric",
+  "Watercolor",
+  "Other",
+] as const;
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
@@ -614,11 +626,18 @@ export default function AdminDashboardPage() {
 
                     <label className="block">
                       Category
-                      <input
+                      <select
+                        required
                         value={mediaForm.category}
                         onChange={(event) => setMediaForm((current) => ({ ...current, category: event.target.value }))}
-                        className="mt-2 w-full rounded-xl border border-white/10 bg-[#0b0b0b] px-3 py-3 outline-none focus:border-[#c9a46a]"
-                      />
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-[#0b0b0b] px-3 py-3 text-white outline-none focus:border-[#c9a46a]"
+                      >
+                        {[...new Set([...galleryCategories, ...(editingMedia ? [editingMedia.category] : [])])].map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
                     </label>
 
                     <label className="block">

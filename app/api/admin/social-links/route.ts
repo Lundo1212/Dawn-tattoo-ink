@@ -1,23 +1,13 @@
 import { NextResponse } from "next/server";
-import { parseSocialLinks, readSocialLinks, saveSocialLinks, validateSocialLinks } from "../../../../lib/social-links";
+import { isAdminRequest } from "../../../../lib/admin-auth";
+import { parseSocialLinks, validateSocialLinks } from "../../../../lib/social-links";
 import { supabase } from "../../../../lib/supabase";
 
-const DEFAULT_ADMIN_SECRET = "dawn-admin-2026";
-
-function isAuthorized(request: Request) {
-  const authorization = request.headers.get("authorization") ?? "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  return Boolean(token && token === (process.env.ADMIN_ACCESS_KEY || DEFAULT_ADMIN_SECRET));
-}
-
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdminRequest(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!supabase) {
-    if (process.env.VERCEL === "1") {
-      return NextResponse.json({ error: "Persistent social-link storage is not configured." }, { status: 503 });
-    }
-    return NextResponse.json({ links: readSocialLinks() });
+    return NextResponse.json({ error: "Persistent social-link storage is not configured." }, { status: 503 });
   }
 
   const { data, error } = await supabase
@@ -34,7 +24,7 @@ export async function GET(request: Request) {
     );
   }
 
-  if (!data) return NextResponse.json({ links: readSocialLinks() });
+  if (!data) return NextResponse.json({ links: {} });
   const links = parseSocialLinks(data.links);
   if (!links) {
     console.error("Stored social links are invalid.");
@@ -44,7 +34,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdminRequest(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const body = await request.json();
@@ -57,11 +47,7 @@ export async function PUT(request: Request) {
     }
 
     if (!supabase) {
-      if (process.env.VERCEL === "1") {
-        return NextResponse.json({ error: "Persistent social-link storage is not configured." }, { status: 503 });
-      }
-      saveSocialLinks(links);
-      return NextResponse.json({ ok: true, links });
+      return NextResponse.json({ error: "Persistent social-link storage is not configured." }, { status: 503 });
     }
 
     const { data, error } = await supabase

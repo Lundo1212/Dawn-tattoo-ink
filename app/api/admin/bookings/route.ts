@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
+import { isAdminRequest } from "../../../../lib/admin-auth";
 import { supabase } from "../../../../lib/supabase";
 
-const DEFAULT_ADMIN_SECRET = "dawn-admin-2026";
-
 export async function POST(request: Request) {
-  const authorization = request.headers.get("authorization") ?? "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  const expectedToken = process.env.ADMIN_ACCESS_KEY || DEFAULT_ADMIN_SECRET;
-
-  if (!token || token !== expectedToken) {
+  if (!isAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

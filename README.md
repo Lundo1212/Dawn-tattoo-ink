@@ -41,6 +41,10 @@ APP_URL=https://dawn-tattoo-ink.vercel.app
 
 Add the same values in your Vercel project under Settings → Environment Variables so the live site can send booking reminders, payment confirmations, and admin replies automatically.
 
+Set a unique, high-entropy `ADMIN_ACCESS_KEY` in your local environment and Vercel project settings. The admin dashboard and its APIs reject access when this key is not configured; do not use a public/default key.
+
+Visitor questions are saved in Supabase and can only be read or managed through the authenticated admin APIs. Apply the migrations in `supabase/migrations/` in timestamp order, including the question-reply/social-link migration and the public-access restriction migration. The admin can edit or clear supported social URLs; saved links appear as clickable icons in the homepage footer. Replies require `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` in Vercel. A reply is marked answered only after the email is accepted by the SMTP server and the database update succeeds.
+
 Booking emails link to the ticket tracker at `/track`, where customers can enter a ticket number to check appointment and deposit status or pay an outstanding deposit.
 
 ## Gallery uploads on Vercel

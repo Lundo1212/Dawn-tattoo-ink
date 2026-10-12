@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { isAdminRequest } from "../../../../lib/admin-auth";
 import { supabase } from "../../../../lib/supabase";
 
 const GALLERY_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "gallery-media";
@@ -35,15 +36,11 @@ function saveLocalGalleryItems(items: GalleryItem[]) {
   writeFileSync(path.join(dataDir, "gallery-items.json"), JSON.stringify(items, null, 2));
 }
 
-const DEFAULT_ADMIN_SECRET = "dawn-admin-2026";
 const READ_ONLY_STORAGE_ERROR =
   "This gallery item is stored in local files, which cannot be changed on this deployment. Re-add it using the database-backed gallery.";
 
 function isAuthorized(request: Request) {
-  const authorization = request.headers.get("authorization") ?? "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  const expectedToken = process.env.ADMIN_ACCESS_KEY || DEFAULT_ADMIN_SECRET;
-  return Boolean(token && token === expectedToken);
+  return isAdminRequest(request);
 }
 
 function isUploadedFile(value: FormDataEntryValue | null): value is File {

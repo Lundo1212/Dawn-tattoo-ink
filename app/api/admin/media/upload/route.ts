@@ -1,15 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import { isAdminRequest } from "../../../../../lib/admin-auth";
 import { supabase } from "../../../../../lib/supabase";
 
-const DEFAULT_ADMIN_SECRET = "dawn-admin-2026";
 const GALLERY_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "gallery-media";
 const ALLOWED_MEDIA_TYPES = ["image/*", "video/*"];
 
 function isAuthorized(request: Request) {
-  const authorization = request.headers.get("authorization") ?? "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  return Boolean(token && token === (process.env.ADMIN_ACCESS_KEY || DEFAULT_ADMIN_SECRET));
+  return isAdminRequest(request);
 }
 
 async function ensurePublicGalleryBucket() {

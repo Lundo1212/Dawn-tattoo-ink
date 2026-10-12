@@ -26,7 +26,7 @@ type QuestionRecord = {
   created_at?: string;
   response?: string | null;
   answered_at?: string | null;
-  source?: "local" | "database";
+  source?: "database";
 };
 
 type GalleryItemRecord = {
@@ -411,7 +411,6 @@ export default function AdminDashboardPage() {
         },
         body: JSON.stringify({
           id: question.id,
-          source: question.source ?? "local",
           name: question.customer_name ?? "",
           email: question.customer_email,
           question: question.question_text,
@@ -463,7 +462,6 @@ export default function AdminDashboardPage() {
         },
         body: JSON.stringify({
           id: question.id,
-          source: question.source ?? "local",
         }),
       });
       const result = await response.json();

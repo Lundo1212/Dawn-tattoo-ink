@@ -1,17 +1,9 @@
 import { NextResponse } from "next/server";
-import { deleteLocalAnsweredQuestion } from "../../../../lib/local-questions";
+import { isAdminRequest } from "../../../../lib/admin-auth";
 import { supabase } from "../../../../lib/supabase";
 
-const DEFAULT_ADMIN_SECRET = "dawn-admin-2026";
-
-function isAuthorized(request: Request) {
-  const authorization = request.headers.get("authorization") ?? "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  return Boolean(token && token === (process.env.ADMIN_ACCESS_KEY || DEFAULT_ADMIN_SECRET));
-}
-
 export async function DELETE(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!isAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -27,31 +19,12 @@ export async function DELETE(request: Request) {
   }
 
   const input = body as Record<string, unknown>;
-  const source = input.source;
   const id = input.id;
   if (
-    (source !== "local" && source !== "database") ||
     (typeof id !== "string" && typeof id !== "number") ||
     !String(id).trim()
   ) {
     return NextResponse.json({ error: "A valid answered question is required." }, { status: 400 });
-  }
-
-  if (source === "local") {
-    if (process.env.VERCEL === "1") {
-      return NextResponse.json(
-        { error: "Local questions cannot be deleted on the live site." },
-        { status: 503 },
-      );
-    }
-
-    if (!deleteLocalAnsweredQuestion(String(id))) {
-      return NextResponse.json(
-        { error: "Only answered questions can be deleted." },
-        { status: 404 },
-      );
-    }
-    return NextResponse.json({ ok: true });
   }
 
   if (!supabase) {

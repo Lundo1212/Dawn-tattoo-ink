@@ -1,10 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
-import { readLocalVisitorQuestions } from "../../../../lib/local-questions";
+import { isAdminRequest } from "../../../../lib/admin-auth";
 import { supabase } from "../../../../lib/supabase";
-
-const DEFAULT_ADMIN_SECRET = "dawn-admin-2026";
 
 function readLocalGalleryItems() {
   try {
@@ -17,11 +15,7 @@ function readLocalGalleryItems() {
 }
 
 export async function GET(request: Request) {
-  const authorization = request.headers.get("authorization") ?? "";
-  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
-  const expectedToken = process.env.ADMIN_ACCESS_KEY || DEFAULT_ADMIN_SECRET;
-
-  if (!token || token !== expectedToken) {
+  if (!isAdminRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -35,7 +29,7 @@ export async function GET(request: Request) {
     });
     return NextResponse.json({
       bookings: [],
-      questions: process.env.VERCEL === "1" ? [] : readLocalVisitorQuestions(),
+      questions: [],
       media: readLocalGalleryItems(),
       warnings: [
         "Supabase is not configured. Booking data cannot sync until database credentials are added.",
@@ -90,10 +84,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     bookings: bookings ?? [],
-    questions: [
-      ...databaseQuestions,
-      ...(process.env.VERCEL === "1" ? [] : readLocalVisitorQuestions()),
-    ],
+    questions: databaseQuestions,
     media: [...databaseMedia, ...localMedia],
     warnings,
   });

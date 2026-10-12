@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { saveLocalVisitorQuestion } from "../../../lib/local-questions";
 import { supabase } from "../../../lib/supabase";
 
 export async function POST(request: Request) {
@@ -22,28 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (supabase) {
-      const { error } = await supabase.from("visitor_questions").insert({
-        customer_name: name || null,
-        customer_email: email,
-        question_text: question,
-      });
-
-      if (!error) {
-        return NextResponse.json({
-          ok: true,
-          message: "Your question has been sent to the studio.",
-        }, { status: 201 });
-      }
-
-      console.error("Visitor question insert failed:", error.message);
-      if (process.env.VERCEL === "1") {
-        return NextResponse.json(
-          { error: "We could not save your question right now. Please try again later." },
-          { status: 503 },
-        );
-      }
-    } else if (process.env.VERCEL === "1") {
+    if (!supabase) {
       console.error("Visitor question could not be saved because Supabase is not configured.");
       return NextResponse.json(
         { error: "Question storage is unavailable. Please try again later." },
@@ -51,16 +29,24 @@ export async function POST(request: Request) {
       );
     }
 
-    saveLocalVisitorQuestion({
+    const { error } = await supabase.from("visitor_questions").insert({
       customer_name: name || null,
       customer_email: email,
       question_text: question,
     });
 
-    return NextResponse.json({
-      ok: true,
-      message: "Thanks for your question we shall respond to you shortly via an email.",
-    }, { status: 201 });
+    if (error) {
+      console.error("Visitor question insert failed:", error.message);
+      return NextResponse.json(
+        { error: "We could not save your question right now. Please try again later." },
+        { status: 503 },
+      );
+    }
+
+    return NextResponse.json(
+      { ok: true, message: "Your question has been saved. The studio will reply by email." },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("Visitor question submission failed:", error);
     return NextResponse.json(

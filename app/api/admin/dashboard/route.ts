@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       questions: [],
       media: readLocalGalleryItems(),
       warnings: [
-        "Supabase is not configured. Booking data cannot sync until database credentials are added.",
+        "Server-side Supabase access is not configured. Add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to the deployment environment.",
       ],
     });
   }

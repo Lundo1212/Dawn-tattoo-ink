@@ -45,6 +45,8 @@ Set a unique, high-entropy `ADMIN_ACCESS_KEY` in your local environment and Verc
 
 Visitor questions are saved in Supabase and can only be read or managed through the authenticated admin APIs. Apply the migrations in `supabase/migrations/` in timestamp order, including the question-reply/social-link migration and the public-access restriction migration. The admin can edit or clear supported social URLs; saved links appear as clickable icons in the homepage footer. Replies require `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` in Vercel. A reply is marked answered only after the email is accepted by the SMTP server and the database update succeeds.
 
+All server-side database access requires `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY`) in Vercel. The server client does not fall back to a public/publishable key, since direct public access to visitor questions is revoked.
+
 Booking emails link to the ticket tracker at `/track`, where customers can enter a ticket number to check appointment and deposit status or pay an outstanding deposit.
 
 ## Gallery uploads on Vercel

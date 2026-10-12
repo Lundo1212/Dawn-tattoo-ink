@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { isAdminRequest } from "../../../../lib/admin-auth";
-import { parseSocialLinks, validateSocialLinks } from "../../../../lib/social-links";
+import { parseSocialLinks, readSocialLinks, saveSocialLinks, validateSocialLinks } from "../../../../lib/social-links";
 import { supabase } from "../../../../lib/supabase";
 
 export async function GET(request: Request) {
   if (!isAdminRequest(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!supabase) {
-    return NextResponse.json({ error: "Persistent social-link storage is not configured." }, { status: 503 });
+    if (process.env.VERCEL === "1") {
+      return NextResponse.json({ error: "Persistent social-link storage is not configured." }, { status: 503 });
+    }
+    return NextResponse.json({ links: readSocialLinks() });
   }
 
   const { data, error } = await supabase
@@ -24,7 +27,7 @@ export async function GET(request: Request) {
     );
   }
 
-  if (!data) return NextResponse.json({ links: {} });
+  if (!data) return NextResponse.json({ links: readSocialLinks() });
   const links = parseSocialLinks(data.links);
   if (!links) {
     console.error("Stored social links are invalid.");
@@ -47,7 +50,11 @@ export async function PUT(request: Request) {
     }
 
     if (!supabase) {
-      return NextResponse.json({ error: "Persistent social-link storage is not configured." }, { status: 503 });
+      if (process.env.VERCEL === "1") {
+        return NextResponse.json({ error: "Persistent social-link storage is not configured." }, { status: 503 });
+      }
+      saveSocialLinks(links);
+      return NextResponse.json({ ok: true, links });
     }
 
     const { data, error } = await supabase

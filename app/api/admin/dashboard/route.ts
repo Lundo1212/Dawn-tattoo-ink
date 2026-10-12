@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { isAdminRequest } from "../../../../lib/admin-auth";
+import { readLocalVisitorQuestions } from "../../../../lib/local-questions";
 import { supabase } from "../../../../lib/supabase";
 
 function readLocalGalleryItems() {
@@ -29,10 +30,10 @@ export async function GET(request: Request) {
     });
     return NextResponse.json({
       bookings: [],
-      questions: [],
+      questions: process.env.VERCEL === "1" ? [] : readLocalVisitorQuestions(),
       media: readLocalGalleryItems(),
       warnings: [
-        "Server-side Supabase access is not configured. Add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to the deployment environment.",
+        "Supabase is not configured. Booking data cannot sync until database credentials are added.",
       ],
     });
   }
@@ -84,7 +85,10 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     bookings: bookings ?? [],
-    questions: databaseQuestions,
+    questions: [
+      ...databaseQuestions,
+      ...(process.env.VERCEL === "1" ? [] : readLocalVisitorQuestions()),
+    ],
     media: [...databaseMedia, ...localMedia],
     warnings,
   });

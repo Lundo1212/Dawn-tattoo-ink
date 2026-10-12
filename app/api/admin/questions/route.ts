@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdminRequest } from "../../../../lib/admin-auth";
+import { deleteLocalAnsweredQuestion } from "../../../../lib/local-questions";
 import { supabase } from "../../../../lib/supabase";
 
 export async function DELETE(request: Request) {
@@ -19,12 +20,31 @@ export async function DELETE(request: Request) {
   }
 
   const input = body as Record<string, unknown>;
+  const source = input.source;
   const id = input.id;
   if (
+    (source !== "local" && source !== "database") ||
     (typeof id !== "string" && typeof id !== "number") ||
     !String(id).trim()
   ) {
     return NextResponse.json({ error: "A valid answered question is required." }, { status: 400 });
+  }
+
+  if (source === "local") {
+    if (process.env.VERCEL === "1") {
+      return NextResponse.json(
+        { error: "Local questions cannot be deleted on the live site." },
+        { status: 503 },
+      );
+    }
+
+    if (!deleteLocalAnsweredQuestion(String(id))) {
+      return NextResponse.json(
+        { error: "Only answered questions can be deleted." },
+        { status: 404 },
+      );
+    }
+    return NextResponse.json({ ok: true });
   }
 
   if (!supabase) {

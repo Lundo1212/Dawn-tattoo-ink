@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   if (error) {
     console.error("Social links could not be loaded from Supabase:", error.message);
     return NextResponse.json(
-      { error: "Social-link storage is not ready. Apply the latest Supabase migration." },
+      { error: `Social links could not be loaded: ${error.message}` },
       { status: 503 },
     );
   }
@@ -66,7 +66,7 @@ export async function PUT(request: Request) {
     if (error || !data) {
       console.error("Social links could not be saved to Supabase:", error?.message ?? "No settings row returned.");
       return NextResponse.json(
-        { error: "Unable to save social links. Ensure the latest Supabase migration has been applied." },
+        { error: `Unable to save social links: ${error?.message ?? "Supabase returned no settings row."}` },
         { status: 503 },
       );
     }

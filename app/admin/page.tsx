@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
 type BookingRecord = {
   id: number;
@@ -214,8 +215,60 @@ export default function AdminDashboardPage() {
         formData.append("video_url", mediaForm.video_url);
       }
 
+      let uploadedMedia: { bucket: string; path: string } | null = null;
       if (galleryFile) {
-        formData.append("file", galleryFile);
+        const uploadResponse = await fetch("/api/admin/media/upload", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            fileName: galleryFile.name,
+            contentType: galleryFile.type,
+          }),
+        });
+        const uploadResult: {
+          localFallback?: boolean;
+          bucket?: string;
+          path?: string;
+          token?: string;
+          error?: string;
+        } = await uploadResponse.json();
+        if (!uploadResponse.ok) {
+          throw new Error(uploadResult.error ?? "Unable to prepare the media upload.");
+        }
+
+        if (uploadResult.localFallback) {
+          formData.append("file", galleryFile);
+        } else {
+          if (!uploadResult.bucket || !uploadResult.path || !uploadResult.token) {
+            throw new Error("The media upload service returned an incomplete upload authorization.");
+          }
+
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+          if (!supabaseUrl || !supabaseKey) {
+            throw new Error("Supabase public URL and publishable key are required for media uploads.");
+          }
+
+          const supabaseBrowser = createClient(supabaseUrl, supabaseKey);
+          const { error: uploadError } = await supabaseBrowser.storage
+            .from(uploadResult.bucket)
+            .uploadToSignedUrl(uploadResult.path, uploadResult.token, galleryFile, {
+              contentType: galleryFile.type,
+            });
+          if (uploadError) throw new Error(`Media upload failed: ${uploadError.message}`);
+
+          uploadedMedia = { bucket: uploadResult.bucket, path: uploadResult.path };
+          const publicUrl = supabaseBrowser.storage
+            .from(uploadResult.bucket)
+            .getPublicUrl(uploadResult.path).data.publicUrl;
+          const isVideo = galleryFile.type.startsWith("video/");
+          formData.set("media_type", isVideo ? "video" : "image");
+          formData.set(isVideo ? "video_url" : "image_url", publicUrl);
+          formData.set(isVideo ? "image_url" : "video_url", "");
+        }
       }
 
       const method = editingMedia ? "PATCH" : "POST";
@@ -235,6 +288,16 @@ export default function AdminDashboardPage() {
       const result = await response.json();
 
       if (!response.ok) {
+        if (uploadedMedia) {
+          await fetch("/api/admin/media/upload", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ path: uploadedMedia.path }),
+          });
+        }
         throw new Error(result.error ?? "Unable to save the media item.");
       }
 

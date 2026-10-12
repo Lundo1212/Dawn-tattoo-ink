@@ -3,6 +3,8 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { supabase } from "../../../../lib/supabase";
 
+const GALLERY_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "gallery-media";
+
 type GalleryItem = {
   id: number | string;
   title: string;
@@ -35,17 +37,13 @@ function saveLocalGalleryItems(items: GalleryItem[]) {
 
 const DEFAULT_ADMIN_SECRET = "dawn-admin-2026";
 const READ_ONLY_STORAGE_ERROR =
-  "Gallery changes need persistent storage in production. Configure the Supabase gallery_items table and use hosted media URLs instead of uploading files.";
+  "This gallery item is stored in local files, which cannot be changed on this deployment. Re-add it using the database-backed gallery.";
 
 function isAuthorized(request: Request) {
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
   const expectedToken = process.env.ADMIN_ACCESS_KEY || DEFAULT_ADMIN_SECRET;
   return Boolean(token && token === expectedToken);
-}
-
-function isServerlessDeployment() {
-  return process.env.VERCEL === "1";
 }
 
 function isUploadedFile(value: FormDataEntryValue | null): value is File {
@@ -60,6 +58,41 @@ function removeUploadedFile(url: string | null | undefined) {
   if (path.dirname(filePath) === uploadsDirectory && existsSync(filePath)) {
     unlinkSync(filePath);
   }
+}
+
+function getStoredMediaPath(url: string | null | undefined) {
+  if (!url || !supabase) return null;
+
+  try {
+    const parsedUrl = new URL(url);
+    const bucketUrl = new URL(
+      supabase.storage.from(GALLERY_BUCKET).getPublicUrl("").data.publicUrl,
+    );
+    const objectPrefix = bucketUrl.pathname.endsWith("/")
+      ? bucketUrl.pathname
+      : `${bucketUrl.pathname}/`;
+    if (parsedUrl.origin !== bucketUrl.origin || !parsedUrl.pathname.startsWith(objectPrefix)) return null;
+
+    const objectPath = decodeURIComponent(parsedUrl.pathname.slice(objectPrefix.length));
+    return objectPath && !objectPath.split("/").some((segment) => segment === "." || segment === "..")
+      ? objectPath
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function removeStoredMedia(url: string | null | undefined) {
+  if (url?.startsWith("/uploads/")) {
+    removeUploadedFile(url);
+    return;
+  }
+
+  const objectPath = getStoredMediaPath(url);
+  if (!objectPath || !supabase) return;
+
+  const { error } = await supabase.storage.from(GALLERY_BUCKET).remove([objectPath]);
+  if (error) console.error("Gallery storage cleanup failed:", error);
 }
 
 async function readMediaFields(formData: FormData, previous?: GalleryItem) {
@@ -96,11 +129,11 @@ async function readMediaFields(formData: FormData, previous?: GalleryItem) {
     }
   }
 
-  if (mediaType === "video" && !videoUrl && imageUrl) {
-    videoUrl = imageUrl;
+  if (mediaType === "video") {
+    if (!videoUrl && imageUrl) videoUrl = imageUrl;
     imageUrl = null;
-  } else if (mediaType === "image" && !imageUrl && videoUrl) {
-    imageUrl = videoUrl;
+  } else {
+    if (!imageUrl && videoUrl) imageUrl = videoUrl;
     videoUrl = null;
   }
 
@@ -135,12 +168,11 @@ export async function POST(request: Request) {
 
   try {
     const formData = await request.formData();
-    if (isServerlessDeployment() && isUploadedFile(formData.get("file"))) {
-      return NextResponse.json({ error: READ_ONLY_STORAGE_ERROR }, { status: 503 });
-    }
-
-    if (isServerlessDeployment() && !supabase) {
-      return NextResponse.json({ error: READ_ONLY_STORAGE_ERROR }, { status: 503 });
+    if (process.env.VERCEL === "1" && !supabase) {
+      return NextResponse.json(
+        { error: "Persistent gallery storage is not configured. Set the Supabase URL, gallery_items table, and server-side service role key." },
+        { status: 503 },
+      );
     }
 
     const { fields } = await readMediaFields(formData);
@@ -153,7 +185,7 @@ export async function POST(request: Request) {
 
       if (data) return NextResponse.json({ ok: true, item: { ...data, source: "database" } });
       if (error) console.error("Gallery insert failed:", error);
-      if (isServerlessDeployment()) {
+      if (process.env.VERCEL === "1") {
         return NextResponse.json(
           { error: "Unable to save this gallery item to the database. Check the Supabase gallery_items table and try again." },
           { status: 500 },
@@ -193,10 +225,10 @@ export async function PATCH(request: Request) {
     if (source !== "local" && source !== "database") {
       return NextResponse.json({ error: "Invalid media storage source." }, { status: 400 });
     }
-    if (isServerlessDeployment() && source === "local") {
+    if (process.env.VERCEL === "1" && source === "local") {
       return NextResponse.json({ error: READ_ONLY_STORAGE_ERROR }, { status: 503 });
     }
-    if (isServerlessDeployment() && isUploadedFile(formData.get("file"))) {
+    if (process.env.VERCEL === "1" && isUploadedFile(formData.get("file"))) {
       return NextResponse.json({ error: READ_ONLY_STORAGE_ERROR }, { status: 503 });
     }
 
@@ -230,8 +262,8 @@ export async function PATCH(request: Request) {
         .single();
       if (error || !data) throw new Error(error?.message ?? "Unable to update media item.");
       removeLocalDuplicates([existing.image_url, existing.video_url]);
-      if (existing.image_url !== fields.image_url) removeUploadedFile(existing.image_url);
-      if (existing.video_url !== fields.video_url) removeUploadedFile(existing.video_url);
+      if (existing.image_url !== fields.image_url) await removeStoredMedia(existing.image_url);
+      if (existing.video_url !== fields.video_url) await removeStoredMedia(existing.video_url);
       return NextResponse.json({ ok: true, item: { ...data, source: "database" } });
     }
 
@@ -254,6 +286,7 @@ export async function PATCH(request: Request) {
 function removeLocalDuplicates(urls: Array<string | null | undefined>) {
   const knownUrls = new Set(urls.filter((url): url is string => Boolean(url)));
   if (knownUrls.size === 0) return;
+  if (process.env.VERCEL === "1") return;
 
   const localItems = readLocalGalleryItems();
   const remainingItems = localItems.filter(
@@ -272,7 +305,7 @@ export async function DELETE(request: Request) {
     const id = String(rawId ?? "");
     const source = String(rawSource ?? "local");
     if (!id) return NextResponse.json({ error: "Media item ID is required." }, { status: 400 });
-    if (isServerlessDeployment() && source === "local") {
+    if (process.env.VERCEL === "1" && source === "local") {
       return NextResponse.json({ error: READ_ONLY_STORAGE_ERROR }, { status: 503 });
     }
 
@@ -285,8 +318,8 @@ export async function DELETE(request: Request) {
         .select("image_url, video_url")
         .single();
       if (error || !data) throw new Error(error?.message ?? "Unable to delete media item.");
-      removeUploadedFile(data.image_url);
-      removeUploadedFile(data.video_url);
+      await removeStoredMedia(data.image_url);
+      await removeStoredMedia(data.video_url);
     } else {
       const localItems = readLocalGalleryItems();
       const item = localItems.find((entry) => String(entry.id) === id);
